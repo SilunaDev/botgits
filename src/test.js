@@ -15,6 +15,14 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const YT_API_KEY = process.env.YT_API_KEY;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 
+function extractText(message) {
+  if (!message) return "";
+  if (message.conversation) return message.conversation;
+  if (message.extendedTextMessage?.text) return message.extendedTextMessage.text;
+  if (message.ephemeralMessage) return extractText(message.ephemeralMessage.message);
+  return "";
+}
+
 async function startSock() {
   const { state, saveCreds } = await useMultiFileAuthState("auth_info");
 
@@ -41,16 +49,24 @@ async function startSock() {
   });
 
   client.ev.on("messages.upsert", async ({ messages, type }) => {
-    const msg = messages[0];
-    if (!msg?.message || msg.key.fromMe) return;
+    let msg = messages[0];
 
-    const sender = msg.key.remoteJid;
-    const isImage = msg.message.imageMessage;
-    const body =
-      msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+    // Debug logs for every incoming message
+    console.log("\n📩 Message received:");
+    console.log(`🔹 RemoteJID: ${msg.key.remoteJid}`);
+    console.log(`🔹 FromMe: ${msg.key.fromMe}`);
+    console.log(`🔹 Participant: ${msg.key.participant || "N/A"}`);
+    console.log(`🔹 Message type: ${Object.keys(msg.message || {})}`);
+    console.log(`🔹 Message content: ${JSON.stringify(msg.message, null, 2)}`);
+
+    if (!msg?.message) return;
+
+    // Extract text from normal or ephemeral message
+    const body = extractText(msg.message);
 
     if (!body.startsWith("!")) return;
 
+    const sender = msg.key.remoteJid;
     const command = body.split(" ")[0];
     const args = body.split(" ").slice(1);
 
@@ -64,7 +80,7 @@ async function startSock() {
 !yt <URL>
 !ytsearch <query>
 !chat <prompt>
-!sticker (send image)`
+!sticker (send image)`,
       });
     }
 
@@ -87,7 +103,7 @@ async function startSock() {
           text: `🤖 *AI Response:*\n\n${aiReply}`
         });
       } catch (err) {
-        console.error("Gemini error:", err);
+        console.error("Gemini error:", err.response?.data || err);
         client.sendMessage(sender, { text: "❌ Error with Gemini API." });
       }
     }
@@ -193,7 +209,6 @@ async function startSock() {
         await client.sendMessage(sender, { text: "❌ Failed to create sticker. Please try again." });
       }
     }
-
 
   });
 }
