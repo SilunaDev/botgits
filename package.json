@@ -3,7 +3,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.17",
+    "@whiskeysockets/baileys": "^6.7.18",
     "axios": "^1.9.0",
     "dotenv": "^16.5.0",
     "node-schedule": "^2.1.1",
